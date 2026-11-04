@@ -186,7 +186,7 @@ select,input[type=text]{font:inherit;font-size:1rem;color:var(--ink);background:
       <span>Escape Room Guinizelli</span>
     </div>
     <div class="slots" id="slots" role="list" aria-label="Parola chiave: una lettera per ogni stanza"></div>
-    <div class="clock" id="clock"><b id="clk">10:00</b><small>tempo</small><span class="pen" id="pen" aria-hidden="true"></span></div>
+    <div class="clock" id="clock"><b id="clk">15:00</b><small>tempo</small><span class="pen" id="pen" aria-hidden="true"></span></div>
   </div>
   <div class="bar" aria-hidden="true"><i id="barfill"></i></div>
 </header>
@@ -197,7 +197,7 @@ select,input[type=text]{font:inherit;font-size:1rem;color:var(--ink);background:
 'use strict';
 
 /* ---------- configurazione ---------- */
-var DURATION = 600;   // secondi totali (10 minuti)
+var DURATION = 900;   // secondi totali (15 minuti)
 var PEN_ERR  = 10;    // penalità per tentativo sbagliato
 var PEN_HINT = 30;    // penalità per indizio
 var KEY      = 'ANGELO';
@@ -416,12 +416,12 @@ function viewIntro(){
   $('#app').innerHTML=
   '<div class="hero"><div class="wrap">'+
     '<svg class="star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 0 L14.2 9.8 L24 12 L14.2 14.2 L12 24 L9.8 14.2 L0 12 L9.8 9.8 Z" fill="#fff3c9"/></svg>'+
-    '<p class="eyebrow">Escape room di analisi del testo · 10 minuti</p>'+
+    '<p class="eyebrow">Escape room di analisi del testo · 15 minuti</p>'+
     '<h1>Vedut’ho la lucente stella diana</h1>'+
     '<p class="sub">Il poeta ha visto la stella del mattino e ora non riesce più a parlare. La porta dell’alba si apre solo con una parola di sei lettere, nascosta nel suo sonetto.</p>'+
     '<ul class="rules">'+
       '<li><b>6</b><span>stanze da attraversare in ordine, con due prove in ciascuna. Ogni stanza aperta dà una lettera.</span></li>'+
-      '<li><b>10:00</b><span>per uscire. Un tentativo sbagliato costa 10 secondi, un indizio 30.</span></li>'+
+      '<li><b>15:00</b><span>per uscire. Un tentativo sbagliato costa 10 secondi, un indizio 30.</span></li>'+
       '<li><b>1</b><span>parola-chiave: alla fine mettete in fila le lettere e aprite la porta finale.</span></li>'+
     '</ul>'+
     '<button class="btn night" id="go" type="button">Entra e avvia il tempo</button>'+
