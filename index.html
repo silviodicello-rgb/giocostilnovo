@@ -1,0 +1,615 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Escape Room Guinizelli</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bellefair&family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: night-sky header (timer + six room slots that fill with the keyword letters);
+   below it the sonnet stays visible on the left while the current room opens on the right. */
+:root{
+  --bg:#f3f5fb; --surface:#ffffff; --ink:#161b3d; --muted:#565d85; --line:#d3d8ec;
+  --grana:#a8232f; --grana-soft:#f8e3e5; --on-grana:#ffffff;
+  --ok:#1b6b45; --ok-soft:#e0f3e8;
+  --notte:#141a45; --on-notte:#f4f5ff; --notte-line:#323a80; --alba:#f0b445; --on-alba:#141a45;
+  --warn-on-notte:#ff9aa3;
+  --f-display:"Bellefair","Iowan Old Style",Georgia,serif;
+  --f-text:"EB Garamond","Iowan Old Style",Georgia,serif;
+  --f-ui:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0b0f2c; --surface:#141a4a; --ink:#ecedfa; --muted:#a6acd4; --line:#2b3274;
+    --grana:#ff8590; --grana-soft:#3b2145; --on-grana:#1a0f24;
+    --ok:#6fdba6; --ok-soft:#133b3a;
+    --notte:#070a22; --notte-line:#2b3274;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0b0f2c; --surface:#141a4a; --ink:#ecedfa; --muted:#a6acd4; --line:#2b3274;
+  --grana:#ff8590; --grana-soft:#3b2145; --on-grana:#1a0f24;
+  --ok:#6fdba6; --ok-soft:#133b3a;
+  --notte:#070a22; --notte-line:#2b3274;
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-ui);font-size:17px;line-height:1.5;min-height:100vh}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--notte)}
+.wrap{max-width:1120px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1,h2,h3,p{margin:0}
+h1,h2{text-wrap:balance}
+:focus-visible{outline:3px solid var(--grana);outline-offset:2px}
+.top :focus-visible{outline-color:var(--alba)}
+
+/* header */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:29;background:var(--notte);color:var(--on-notte)}
+.top .wrap{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 20px;padding-block:10px}
+.brand{display:flex;align-items:center;gap:10px;font-family:var(--f-display);font-size:1.2rem;letter-spacing:.02em;min-width:0}
+.brand svg{flex:none}
+.slots{display:flex;gap:6px;order:3;flex:1 1 100%}
+.slot{flex:1 1 0;max-width:48px;aspect-ratio:1;display:grid;place-items:center;border:1px solid var(--notte-line);border-radius:3px;font-family:var(--f-mono);font-size:.95rem;color:#aab0dc;background:transparent}
+.slot.cur{border:2px solid var(--alba);color:var(--on-notte);animation:glow 2.4s ease-in-out infinite}
+.slot.on{background:var(--alba);border-color:var(--alba);color:var(--on-alba);font-family:var(--f-display);font-size:1.4rem}
+.clock{position:relative;display:flex;align-items:baseline;gap:8px}
+.clock b{font-family:var(--f-mono);font-weight:500;font-size:1.7rem;font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.clock small{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:#aab0dc}
+.clock.low b{color:var(--warn-on-notte)}
+.pen{position:absolute;right:0;top:100%;font-family:var(--f-mono);font-size:.85rem;color:var(--warn-on-notte);opacity:0;pointer-events:none}
+.pen.go{animation:pen 1.6s ease-out}
+.bar{height:3px;background:var(--notte-line)}
+.bar i{display:block;height:100%;width:100%;background:var(--alba);transition:width .25s linear}
+@keyframes glow{0%,100%{box-shadow:0 0 0 0 rgba(240,180,69,.0)}50%{box-shadow:0 0 10px 1px rgba(240,180,69,.55)}}
+@keyframes pen{0%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(10px)}}
+@media (min-width:760px){
+  .slots{order:0;flex:0 1 auto;margin-inline:auto}
+  .slot{width:42px;max-width:none;flex:none}
+}
+
+/* intro */
+.hero{background:linear-gradient(180deg,#141a45 0%,#2a2a6a 42%,#8a2f50 78%,#e0894a 100%);color:#f6f4ff}
+.hero .wrap{padding-block:clamp(36px,7vw,84px) clamp(32px,5vw,56px);display:grid;gap:22px;position:relative}
+.eyebrow{font-family:var(--f-mono);font-size:.78rem;letter-spacing:.14em;text-transform:uppercase}
+.hero .eyebrow{color:#d6d9f7}
+.hero h1{font-family:var(--f-display);font-weight:400;font-size:clamp(2.3rem,7.2vw,4.8rem);line-height:1.05;max-width:16ch}
+.hero .sub{font-family:var(--f-text);font-size:1.3rem;max-width:44ch;color:#f1eefb}
+.hero .star{position:absolute;right:max(16px,env(safe-area-inset-right,0px));top:clamp(24px,5vw,56px);width:clamp(54px,11vw,120px);height:auto;opacity:.95}
+.rules{display:grid;gap:10px;max-width:60ch;padding:0;margin:0;list-style:none}
+.rules li{display:grid;grid-template-columns:auto 1fr;gap:12px;font-size:1rem}
+.rules b{font-family:var(--f-mono);font-weight:500;color:#ffd98a}
+.hero .btn{justify-self:start}
+.intro-foot{padding-block:22px 40px;color:var(--muted);font-size:.95rem;max-width:70ch}
+
+/* buttons */
+.btn{font:600 1rem var(--f-ui);padding:.75rem 1.2rem;border-radius:3px;border:1px solid var(--ink);background:var(--ink);color:var(--bg);cursor:pointer}
+.btn:hover{filter:brightness(1.08)}
+.btn.grana{background:var(--grana);border-color:var(--grana);color:var(--on-grana)}
+.btn.ghost{background:transparent;color:var(--ink)}
+.btn.night{background:#141a45;border-color:#141a45;color:#fff}
+.btn[disabled]{opacity:.5;cursor:default}
+
+/* stage */
+main>.wrap{padding-block:24px 64px}
+.stage{display:grid;grid-template-columns:minmax(0,1fr);gap:20px}
+.poem{background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:18px 20px}
+.poem header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px}
+.poem h2{font-family:var(--f-display);font-weight:400;font-size:1.25rem;line-height:1.2}
+.poem .by{color:var(--muted);font-size:.85rem;margin-top:2px}
+.poem .tog{font:500 .85rem var(--f-ui);background:none;border:1px solid var(--line);color:var(--ink);padding:.3rem .6rem;border-radius:3px;cursor:pointer;flex:none}
+.poem.shut .stanzas{display:none}
+.stanzas{display:grid;gap:14px}
+.st{list-style:none;margin:0;padding:0}
+.st li{display:grid;grid-template-columns:1.7rem minmax(0,1fr);align-items:baseline;font-family:var(--f-text);font-size:1.22rem;line-height:1.45}
+.st .n{font-family:var(--f-mono);font-size:.7rem;color:var(--muted)}
+.poem[data-room="1"] .end{background:var(--grana-soft);box-shadow:0 0 0 2px var(--grana-soft);border-radius:2px}
+.credit{margin-top:12px;font-size:.75rem;color:var(--muted)}
+@media (min-width:900px){
+  .stage{grid-template-columns:minmax(300px,370px) minmax(0,1fr);gap:32px;align-items:start}
+  .poem{position:sticky;top:calc(env(safe-area-inset-top,0px) + 92px)}
+  .poem .tog{display:none}
+  .poem.shut .stanzas{display:grid}
+}
+
+/* room */
+.room{min-width:0;scroll-margin-top:96px}
+.sortlist .row{grid-template-columns:minmax(0,7.5rem) minmax(0,1fr)}
+.room .eyebrow{color:var(--grana)}
+.room h2{font-family:var(--f-display);font-weight:400;font-size:clamp(1.8rem,4.5vw,2.5rem);line-height:1.1;margin-top:4px}
+.room h2:focus{outline:none}
+.lead{font-family:var(--f-text);font-size:1.25rem;color:var(--muted);margin-top:10px;max-width:60ch}
+.ends{list-style:none;margin:18px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:6px}
+.ends li{font-family:var(--f-text);font-size:1.1rem;border:1px solid var(--line);background:var(--surface);padding:4px 8px;border-radius:3px;display:flex;gap:8px;align-items:baseline}
+.ends .n{font-family:var(--f-mono);font-size:.7rem;color:var(--muted)}
+.task{padding-block:20px;margin-top:20px;border-top:1px solid var(--line)}
+.task .q{font-family:var(--f-text);font-size:1.28rem;line-height:1.4;max-width:62ch}
+.task .q em{font-style:italic}
+.opts{display:grid;gap:8px;margin-top:14px;max-width:68ch}
+.opt{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--line);border-radius:3px;background:var(--surface);cursor:pointer}
+.opt:hover{border-color:var(--ink)}
+.opt input{margin-top:.38rem;accent-color:var(--grana);flex:none}
+.opt:has(input:checked){border-color:var(--grana);background:var(--grana-soft)}
+.row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,15rem);gap:8px 16px;align-items:center;padding:10px 0;border-bottom:1px dashed var(--line);max-width:68ch}
+.row .p{font-family:var(--f-text);font-size:1.12rem;line-height:1.35}
+.matchlist,.sortlist{margin-top:10px}
+select,input[type=text]{font:inherit;font-size:1rem;color:var(--ink);background:var(--surface);border:1px solid var(--ink);border-radius:3px;padding:.55rem .6rem;width:100%;min-width:0}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.chip{position:relative;cursor:pointer}
+.chip input{position:absolute;opacity:0;inset:0;width:100%;height:100%;margin:0;cursor:pointer}
+.chip span{display:block;padding:.35rem .7rem;border:1px solid var(--line);border-radius:3px;background:var(--surface);font-size:.92rem}
+.chip:hover span{border-color:var(--ink)}
+.chip:has(input:checked) span{border-color:var(--grana);background:var(--grana-soft);font-weight:600}
+.chip:has(input:focus-visible){outline:3px solid var(--grana);outline-offset:2px}
+.fld{display:grid;gap:4px;margin-top:12px;max-width:26rem}
+.fld label{font-size:.85rem;color:var(--muted)}
+.fb{font-size:.95rem;min-height:1.4em;margin-top:8px}
+.task.ok{border-top-color:var(--ok)}
+.task.ok .fb{color:var(--ok);font-weight:600}
+.task.ko .fb{color:var(--grana);font-weight:600}
+.task.ok .opt,.task.ok .chip span{opacity:.85}
+.door{display:flex;flex-wrap:wrap;align-items:center;gap:10px 12px;padding-top:22px;border-top:1px solid var(--line);margin-top:20px}
+.door .fb{flex:1 1 100%;margin:0}
+.door.fin{border-top:none;margin-top:0}
+.hintbox{margin-top:14px;padding:12px 14px;border:1px dashed var(--grana);border-radius:3px;font-size:1rem;max-width:68ch}
+.hintbox b{font-family:var(--f-mono);font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;color:var(--grana);display:block;margin-bottom:2px}
+.clear{margin-top:22px;border:1px solid var(--ok);background:var(--ok-soft);padding:18px;display:grid;grid-template-columns:auto minmax(0,1fr);gap:18px;align-items:center;border-radius:4px}
+.bigletter{font-family:var(--f-display);font-size:3.6rem;line-height:1;width:5rem;height:5rem;display:grid;place-items:center;background:var(--alba);color:var(--on-alba);border-radius:3px}
+.clear .t{font-weight:600;margin-bottom:4px}
+.clear .nt{font-size:.98rem}
+.clear .btn{grid-column:1/-1;justify-self:start}
+@media (max-width:560px){.row{grid-template-columns:minmax(0,1fr)}}
+
+/* final door and result */
+.keybox{display:grid;gap:12px;max-width:26rem;margin-top:16px}
+.keybox input{font-family:var(--f-mono);font-size:1.6rem;letter-spacing:.35em;text-transform:uppercase;text-align:center;padding:.6rem}
+.win h2{font-size:clamp(2rem,6vw,3.4rem)}
+.stats{display:flex;flex-wrap:wrap;gap:10px 28px;margin-top:18px;font-family:var(--f-mono);font-size:.95rem}
+.stats b{font-weight:500;font-size:1.3rem;display:block}
+.recap{margin:22px 0 0;padding:0;list-style:none;display:grid;gap:10px;max-width:68ch}
+.recap li{padding-left:14px;border-left:2px solid var(--line);font-size:.98rem}
+.recap strong{font-family:var(--f-display);font-weight:400;font-size:1.15rem;display:block}
+.teach{position:fixed;inset:0;z-index:60;overflow:auto;background:var(--bg);padding-block:calc(env(safe-area-inset-top,0px) + 24px) 64px}
+.teach h2{font-family:var(--f-display);font-weight:400;font-size:2rem}
+.teach .nt{color:var(--muted);font-size:.92rem;margin-top:8px}
+.teach table{border-collapse:collapse;width:100%;font-size:.95rem}
+.teach td,.teach th{border-top:1px solid var(--line);padding:8px 10px 8px 0;vertical-align:top;text-align:left}
+.teach .scroll{overflow-x:auto}
+.teach h3{font-family:var(--f-display);font-weight:400;font-size:1.4rem;margin-top:28px}
+.ov{position:fixed;inset:0;z-index:50;background:rgba(7,10,34,.72);display:grid;place-items:center;padding:20px}
+.ov>div{background:var(--surface);color:var(--ink);max-width:30rem;padding:24px;border-radius:4px;display:grid;gap:12px}
+.ov h2{font-family:var(--f-display);font-weight:400;font-size:2rem}
+.ov .acts{display:flex;flex-wrap:wrap;gap:10px}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+</style>
+<header class="top">
+  <div class="wrap">
+    <div class="brand">
+      <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 0 L14.2 9.8 L24 12 L14.2 14.2 L12 24 L9.8 14.2 L0 12 L9.8 9.8 Z" fill="#f0b445"/></svg>
+      <span>Escape Room Guinizelli</span>
+    </div>
+    <div class="slots" id="slots" role="list" aria-label="Parola chiave: una lettera per ogni stanza"></div>
+    <div class="clock" id="clock"><b id="clk">10:00</b><small>tempo</small><span class="pen" id="pen" aria-hidden="true"></span></div>
+  </div>
+  <div class="bar" aria-hidden="true"><i id="barfill"></i></div>
+</header>
+<main id="app"></main>
+
+<script>
+(function(){
+'use strict';
+
+/* ---------- configurazione ---------- */
+var DURATION = 600;   // secondi totali (10 minuti)
+var PEN_ERR  = 10;    // penalità per tentativo sbagliato
+var PEN_HINT = 30;    // penalità per indizio
+var KEY      = 'ANGELO';
+
+/* ---------- testo ---------- */
+var POEM = [
+  "Vedut’ho la lucente stella diana,",
+  "ch’apare anzi che ’l giorno rend’albore,",
+  "c’ha preso forma di figura umana;",
+  "sovr’ogn’altra me par che dea splendore:",
+  "viso de neve colorato in grana,",
+  "occhi lucenti, gai e pien’ d’amore;",
+  "non credo che nel mondo sia cristiana",
+  "sì piena di biltate e di valore.",
+  "Ed io dal suo valor son assalito",
+  "con sì fera battaglia di sospiri",
+  "ch’avanti a lei de dir non seri’ ardito.",
+  "Così conoscess’ella i miei disiri!",
+  "ché, senza dir, de lei seria servito",
+  "per la pietà ch’avrebbe de’ martiri."
+];
+var STANZAS = [4,4,3,3];
+
+/* ---------- stanze e prove ----------
+   type: choice | multi | match | sort | text
+   ok: indice (choice), array di indici (multi), per item (match/sort), risposte ammesse (text) */
+var ROOMS = [
+ { nome:"La stanza delle rime", letter:"A",
+   intro:"La porta ha quattordici serrature, una per ogni verso. Si aprono con il suono con cui finisce ciascun verso.",
+   hint:"Le due quartine hanno le stesse rime (-ana e -ore). Nelle terzine i suoni sono due soli, -ito e -iri, e si alternano.",
+   note:"Quartine ABAB ABAB e terzine CDC DCD: sempre rime alternate, con quattro rime in tutto (-ana, -ore, -ito, -iri).",
+   tasks:[
+     { type:"choice",
+       q:"Nei vv. 1-4 le parole a fine verso sono <em>diana</em> (A), <em>albore</em> (B), <em>umana</em> (A), <em>splendore</em> (B). Come si chiama questa disposizione delle rime?",
+       opts:["Rima baciata (AABB)","Rima alternata (ABAB)","Rima incrociata (ABBA)"], ok:1 },
+     { type:"text",
+       q:"Scrivi lo schema delle rime di tutti i 14 versi, una lettera per verso (A, B, C, D).",
+       fields:[{label:"Schema completo", ph:"ABAB…", ok:["ababababcdcdcd"], show:"ABAB ABAB CDC DCD"}] }
+   ]},
+ { nome:"La sala dei versi", letter:"N",
+   intro:"Il pavimento è fatto di sillabe: per attraversarlo bisogna contarle bene.",
+   hint:"Cerca nel verso una parola che finisce per vocale seguita da una parola che comincia per vocale.",
+   note:"Il sonetto ha 14 endecasillabi divisi in due quartine e due terzine. Le sinalefi, come in «figura umana», fanno tornare i conti a 11 sillabe.",
+   tasks:[
+     { type:"text",
+       q:"Tutti i versi del sonetto hanno 11 sillabe. Come si chiama questo verso? E come si chiama la forma metrica di 14 versi divisi in due quartine e due terzine?",
+       fields:[
+         {label:"Nome del verso", ph:"…", ok:["endecasillabo","endecasillabi"], show:"endecasillabo"},
+         {label:"Nome della forma metrica", ph:"…", ok:["sonetto"], show:"sonetto"}
+       ] },
+     { type:"choice",
+       q:"Nel v. 3 («c’ha preso forma di figura umana») le sillabe tornano a 11 grazie a una sinalefe: due vocali a contatto, una a fine parola e una a inizio parola, si fondono in una sola sillaba. In quale punto avviene?",
+       opts:["preso forma","forma di","figura umana","di figura"], ok:2 }
+   ]},
+ { nome:"Il corridoio delle figure", letter:"G",
+   intro:"Le pareti sono coperte di immagini. Per proseguire bisogna riconoscere come parla il poeta.",
+   hint:"Guarda la punteggiatura a fine verso: se non c’è nessun segno di pausa, la frase prosegue nel verso dopo.",
+   note:"Metafora donna-stella, iperbole sulla bellezza senza uguali, anastrofe in «Vedut’ho», esclamazione che esprime un desiderio. Enjambement nelle terzine.",
+   tasks:[
+     { type:"match",
+       q:"Collega ogni espressione alla figura retorica giusta.",
+       shared:["anastrofe","enjambement","esclamazione","iperbole","metafora","similitudine"],
+       items:[
+         {p:"«stella diana … forma di figura umana» (vv. 1-3): la donna è una stella", ok:4},
+         {p:"«non credo che nel mondo sia cristiana / sì piena di biltate e di valore» (vv. 7-8)", ok:3},
+         {p:"«Vedut’ho» (v. 1), invece di «ho veduto»", ok:0},
+         {p:"«Così conoscess’ella i miei disiri!» (v. 12)", ok:2}
+       ] },
+     { type:"multi",
+       q:"Tra quali versi c’è enjambement, cioè la frase continua nel verso successivo senza pausa? Seleziona tutte le coppie giuste.",
+       opts:["vv. 3-4","vv. 6-7","vv. 9-10","vv. 10-11","vv. 12-13","vv. 13-14"], ok:[2,3,5] }
+   ]},
+ { nome:"La camera delle parole", letter:"E",
+   intro:"Nella stanza le parole hanno cambiato volto: quelle di oggi non significano più ciò che dicevano nel Duecento.",
+   hint:"Attenzione ai falsi amici: «dea» qui non è una divinità, è una forma del verbo dare (che dea = che dia).",
+   note:"Parole che oggi suonano uguali ma cambiano senso: <em>diana</em> (del mattino), <em>grana</em> (scarlatto), <em>cristiana</em> (creatura umana), <em>martiri</em> (tormenti). E «dea» è il congiuntivo «dia».",
+   tasks:[
+     { type:"match",
+       q:"Scegli il significato che queste parole hanno nel sonetto.",
+       items:[
+         {p:"<em>diana</em> (v. 1, «stella diana»)", opts:["della dea Diana, cioè la Luna","del mattino, che precede l’alba","della giornata di lavoro"], ok:1},
+         {p:"<em>grana</em> (v. 5, «colorato in grana»)", opts:["chicco di grano","denaro","rosso vivo, scarlatto"], ok:2},
+         {p:"<em>cristiana</em> (v. 7)", opts:["seguace di Cristo","creatura umana, donna","donna molto religiosa"], ok:1},
+         {p:"<em>martiri</em> (v. 14)", opts:["santi uccisi per la fede","testimoni","tormenti, pene d’amore"], ok:2}
+       ] },
+     { type:"choice",
+       q:"Quale parafrasi è corretta per il v. 4, «sovr’ogn’altra me par che dea splendore»?",
+       opts:["Ogni altra donna mi sembra una dea splendida.","Mi sembra che risplenda più di ogni altra.","Sopra ogni altra dea mi pare che ci sia splendore."], ok:1 }
+   ]},
+ { nome:"L’archivio dei campi semantici", letter:"L",
+   intro:"Gli scaffali sono in disordine: le parole-chiave vanno rimesse nei loro campi semantici.",
+   hint:"Nelle quartine il soggetto è lei («stella», «viso», «occhi»). Nelle terzine il soggetto è lui («Ed io»).",
+   note:"Per lei il linguaggio della luce (stella, splendore, albore). Per lui quello della guerra (assalito, battaglia) e della pena d’amore (sospiri, martiri). Quartine: lode. Terzine: effetti dell’amore sul poeta.",
+   tasks:[
+     { type:"sort",
+       q:"Assegna ogni parola al suo campo semantico.",
+       cats:["Luce e astri","Guerra","Pena d’amore"],
+       items:[{w:"lucente",ok:0},{w:"battaglia",ok:1},{w:"sospiri",ok:2},{w:"assalito",ok:1},{w:"splendore",ok:0},{w:"martiri",ok:2}] },
+     { type:"choice",
+       q:"Di che cosa parla il sonetto? Che cosa cambia tra le quartine e le terzine?",
+       opts:["Nelle quartine il poeta descrive un paesaggio all’alba; nelle terzine torna a casa.",
+             "Nelle quartine rimprovera la donna; nelle terzine le chiede perdono.",
+             "Nelle quartine loda la bellezza della donna; nelle terzine dice che effetto ha su di lui: timore, sospiri, speranza di pietà."], ok:2 }
+   ]},
+ { nome:"La soglia dell’alba", letter:"O",
+   intro:"Ultima stanza: dietro la soglia c’è il significato del sonetto. Poi resta soltanto la porta finale.",
+   hint:"Nello Stilnovo la donna è un essere superiore, venuto dal cielo, e davanti a lei il poeta trema.",
+   note:"La donna è un essere superiore, quasi celeste. L’amore assale il poeta e il timore gli toglie la parola: sono i temi tipici dello Stilnovo.",
+   tasks:[
+     { type:"choice",
+       q:"Perché il poeta dice che la stella del mattino «ha preso forma di figura umana»?",
+       opts:["Perché ha davvero visto Venere all’alba e poi ha incontrato una donna.",
+             "Perché la donna è così luminosa e perfetta da sembrare un essere celeste che vive tra gli uomini.",
+             "Perché vuole prendere in giro la donna, paragonandola a un oggetto freddo e lontano."], ok:1 },
+     { type:"multi",
+       q:"Quali elementi del sonetto sono tipici dello Stilnovo? Seleziona tutte le risposte corrette.",
+       opts:["La donna è lodata come una creatura quasi divina, che splende più di ogni altra.",
+             "La donna è descritta con tratti comici e quotidiani, come in una scena di mercato.",
+             "Davanti a lei il poeta prova un timore reverenziale che gli toglie la parola.",
+             "Il poeta minaccia la donna perché è stata crudele con lui.",
+             "L’amore agisce sul poeta come una forza che lo assale e lo fa soffrire.",
+             "L’amore è raccontato come un gioco leggero, senza sofferenza."], ok:[0,2,4] }
+   ]}
+];
+
+/* ---------- utilità ---------- */
+var $ = function(s){ return document.querySelector(s); };
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function strip(s){ return esc(String(s).replace(/<[^>]+>/g,'')); }
+function norm(s){ return String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]/g,''); }
+function fmt(sec){ sec=Math.max(0,Math.ceil(sec)); return ('0'+Math.floor(sec/60)).slice(-2)+':'+('0'+(sec%60)).slice(-2); }
+
+/* ---------- stato ---------- */
+var S;
+function fresh(){
+  return {
+    phase:'intro', room:0,
+    solved:ROOMS.map(function(){return false;}),
+    done:ROOMS.map(function(r){return r.tasks.map(function(){return false;});}),
+    hint:ROOMS.map(function(){return false;}),
+    startAt:0, penalty:0, hints:0, errors:0, noTimer:false, ended:false, timedOut:false
+  };
+}
+S = fresh();
+
+/* ---------- tempo ---------- */
+function left(){ return DURATION-(Date.now()-S.startAt)/1000-S.penalty; }
+function tick(){
+  var clk=$('#clk'), bar=$('#barfill'), box=$('#clock');
+  if(S.phase==='intro'){ clk.textContent=fmt(DURATION); bar.style.width='100%'; box.classList.remove('low'); return; }
+  if(S.ended) return;
+  if(S.noTimer){ clk.textContent='--:--'; bar.style.width='0%'; box.classList.remove('low'); return; }
+  var l=left();
+  clk.textContent=fmt(l);
+  bar.style.width=Math.max(0,Math.min(100,l/DURATION*100))+'%';
+  box.classList.toggle('low', l<=60);
+  if(l<=0 && !S.timedOut){ S.timedOut=true; showTimeout(); }
+}
+setInterval(tick,250);
+function penalize(sec){
+  S.penalty+=sec;
+  var p=$('#pen'); p.textContent='−'+sec+' s';
+  p.classList.remove('go'); void p.offsetWidth; p.classList.add('go');
+  tick();
+}
+
+/* ---------- caselle della parola-chiave ---------- */
+function renderSlots(){
+  var h='';
+  for(var i=0;i<ROOMS.length;i++){
+    var cls='slot'+(S.solved[i]?' on':((S.phase==='room'&&S.room===i)?' cur':''));
+    var lab=S.solved[i]?('Stanza '+(i+1)+': lettera '+ROOMS[i].letter):('Stanza '+(i+1)+': da aprire');
+    h+='<div class="'+cls+'" role="listitem" aria-label="'+lab+'">'+(S.solved[i]?ROOMS[i].letter:(i+1))+'</div>';
+  }
+  $('#slots').innerHTML=h;
+}
+
+/* ---------- testo del sonetto ---------- */
+function poemCard(){
+  var n=0, h='';
+  STANZAS.forEach(function(len){
+    h+='<ol class="st">';
+    for(var k=0;k<len;k++){
+      var m=POEM[n].match(/^(.*?)([^\s]+)$/);
+      h+='<li><span class="n">'+(n+1)+'</span><span class="v">'+esc(m[1])+'<span class="end">'+esc(m[2])+'</span></span></li>';
+      n++;
+    }
+    h+='</ol>';
+  });
+  return '<aside class="poem" id="poem" data-room="0" aria-label="Testo del sonetto">'+
+    '<header><div><h2>Vedut’ho la lucente stella diana</h2><p class="by">Guido Guinizelli · XIII secolo · sonetto</p></div>'+
+    '<button class="tog" id="tog" type="button" aria-expanded="true">Nascondi</button></header>'+
+    '<div class="stanzas">'+h+'<p class="credit">Testo: Wikisource, licenza CC BY-SA 3.0.</p></div></aside>';
+}
+function ensureStage(){
+  if($('#room')) return;
+  $('#app').innerHTML='<div class="wrap"><div class="stage">'+poemCard()+'<section class="room" id="room"></section></div></div>';
+  $('#tog').onclick=function(){
+    var shut=$('#poem').classList.toggle('shut');
+    this.textContent=shut?'Mostra testo':'Nascondi';
+    this.setAttribute('aria-expanded',String(!shut));
+  };
+}
+function rhymeList(){
+  var h='<ol class="ends" aria-label="Parole a fine verso">';
+  POEM.forEach(function(v,i){
+    var w=v.match(/([^\s.,;:!?]+)[.,;:!?]*$/)[1].split('’').pop();
+    h+='<li><span class="n">'+(i+1)+'</span>'+esc(w)+'</li>';
+  });
+  return h+'</ol>';
+}
+
+/* ---------- schermata iniziale ---------- */
+function viewIntro(){
+  S.phase='intro'; renderSlots(); tick();
+  $('#app').innerHTML=
+  '<div class="hero"><div class="wrap">'+
+    '<svg class="star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 0 L14.2 9.8 L24 12 L14.2 14.2 L12 24 L9.8 14.2 L0 12 L9.8 9.8 Z" fill="#fff3c9"/></svg>'+
+    '<p class="eyebrow">Escape room di analisi del testo · 10 minuti</p>'+
+    '<h1>Vedut’ho la lucente stella diana</h1>'+
+    '<p class="sub">Il poeta ha visto la stella del mattino e ora non riesce più a parlare. La porta dell’alba si apre solo con una parola di sei lettere, nascosta nel suo sonetto.</p>'+
+    '<ul class="rules">'+
+      '<li><b>6</b><span>stanze da attraversare in ordine, con due prove in ciascuna. Ogni stanza aperta dà una lettera.</span></li>'+
+      '<li><b>10:00</b><span>per uscire. Un tentativo sbagliato costa 10 secondi, un indizio 30.</span></li>'+
+      '<li><b>1</b><span>parola-chiave: alla fine mettete in fila le lettere e aprite la porta finale.</span></li>'+
+    '</ul>'+
+    '<button class="btn night" id="go" type="button">Entra e avvia il tempo</button>'+
+  '</div></div>'+
+  '<div class="wrap"><p class="intro-foot">Si gioca a squadre di due-quattro persone. Il testo del sonetto resta sempre visibile (sul telefono, sopra la prova). Il tempo parte quando premete il pulsante.</p></div>';
+  $('#go').onclick=function(){ S=fresh(); S.startAt=Date.now(); viewRoom(0); };
+}
+
+/* ---------- prove ---------- */
+function taskHTML(ri,ti,t){
+  var id=ri+'-'+ti, b='';
+  if(t.type==='choice'||t.type==='multi'){
+    var ty=t.type==='choice'?'radio':'checkbox';
+    b='<div class="opts" role="group" aria-labelledby="q-'+id+'">';
+    t.opts.forEach(function(o,k){
+      b+='<label class="opt" for="o-'+id+'-'+k+'"><input type="'+ty+'" id="o-'+id+'-'+k+'" name="o-'+id+'" value="'+k+'"><span>'+esc(o)+'</span></label>';
+    });
+    b+='</div>';
+  } else if(t.type==='match'){
+    b='<div class="matchlist">';
+    t.items.forEach(function(it,k){
+      var list=it.opts||t.shared;
+      b+='<div class="row"><label class="p" for="m-'+id+'-'+k+'">'+it.p+'</label><select id="m-'+id+'-'+k+'"><option value="">Scegli…</option>';
+      list.forEach(function(o,j){ b+='<option value="'+j+'">'+esc(o)+'</option>'; });
+      b+='</select></div>';
+    });
+    b+='</div>';
+  } else if(t.type==='sort'){
+    b='<div class="sortlist">';
+    t.items.forEach(function(it,k){
+      b+='<div class="row"><span class="p">'+esc(it.w)+'</span><div class="seg" role="radiogroup" aria-label="'+esc(it.w)+'">';
+      t.cats.forEach(function(c,j){
+        b+='<label class="chip" for="s-'+id+'-'+k+'-'+j+'"><input type="radio" id="s-'+id+'-'+k+'-'+j+'" name="s-'+id+'-'+k+'" value="'+j+'"><span>'+esc(c)+'</span></label>';
+      });
+      b+='</div></div>';
+    });
+    b+='</div>';
+  } else if(t.type==='text'){
+    t.fields.forEach(function(f,k){
+      b+='<div class="fld"><label for="x-'+id+'-'+k+'">'+esc(f.label)+'</label><input type="text" id="x-'+id+'-'+k+'" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="'+esc(f.ph||'')+'"></div>';
+    });
+  }
+  return '<div class="task" id="task-'+id+'"><p class="q" id="q-'+id+'">'+t.q+'</p>'+b+'<p class="fb" role="status"></p></div>';
+}
+function check(t,ri,ti){
+  var id=ri+'-'+ti, root=document.getElementById('task-'+id), ok=true;
+  if(t.type==='choice'){ var c=root.querySelector('input:checked'); return !!c && +c.value===t.ok; }
+  if(t.type==='multi'){
+    var got=[].slice.call(root.querySelectorAll('input:checked')).map(function(i){return +i.value;}).sort(function(a,b){return a-b;});
+    var want=t.ok.slice().sort(function(a,b){return a-b;});
+    return got.join()===want.join();
+  }
+  if(t.type==='match'){ t.items.forEach(function(it,k){ if(document.getElementById('m-'+id+'-'+k).value!==String(it.ok)) ok=false; }); return ok; }
+  if(t.type==='sort'){ t.items.forEach(function(it,k){ var c=root.querySelector('input[name="s-'+id+'-'+k+'"]:checked'); if(!c||+c.value!==it.ok) ok=false; }); return ok; }
+  if(t.type==='text'){ t.fields.forEach(function(f,k){ var v=norm(document.getElementById('x-'+id+'-'+k).value); if(f.ok.map(norm).indexOf(v)<0) ok=false; }); return ok; }
+  return false;
+}
+
+/* ---------- stanze ---------- */
+function viewRoom(ri){
+  var R=ROOMS[ri]; S.room=ri; S.phase='room'; ensureStage();
+  $('#poem').dataset.room=String(ri+1);
+  renderSlots();
+  var h='<p class="eyebrow">Stanza '+(ri+1)+' di '+ROOMS.length+'</p><h2 id="rt" tabindex="-1">'+R.nome+'</h2><p class="lead">'+R.intro+'</p>';
+  if(ri===0) h+=rhymeList();
+  R.tasks.forEach(function(t,ti){ h+=taskHTML(ri,ti,t); });
+  h+='<div class="door"><button class="btn grana" id="open" type="button">Apri la porta</button>'+
+     '<button class="btn ghost" id="hintbtn" type="button">Indizio (−'+PEN_HINT+' s)</button>'+
+     '<p class="fb" id="doorfb" role="status"></p></div>'+
+     '<div class="hintbox" id="hintbox" hidden></div><div id="clearbox"></div>';
+  $('#room').innerHTML=h;
+  $('#open').onclick=function(){ tryRoom(ri); };
+  $('#hintbtn').onclick=function(){ useHint(ri); };
+  [].forEach.call($('#room').querySelectorAll('input[type=text]'),function(i){
+    i.addEventListener('keydown',function(e){ if(e.key==='Enter'){ e.preventDefault(); tryRoom(ri); } });
+  });
+  if(S.hint[ri]) useHint(ri);
+  if(ri>0 && window.innerWidth<900){ $('#room').scrollIntoView(); } else { window.scrollTo(0,0); }
+  $('#rt').focus({preventScroll:true});
+}
+function tryRoom(ri){
+  if(S.solved[ri]) return;
+  var R=ROOMS[ri], all=true;
+  R.tasks.forEach(function(t,ti){
+    if(S.done[ri][ti]) return;
+    var root=document.getElementById('task-'+ri+'-'+ti), fb=root.querySelector('.fb');
+    if(check(t,ri,ti)){
+      S.done[ri][ti]=true; root.classList.remove('ko'); root.classList.add('ok'); fb.textContent='✓ Serratura aperta';
+      [].forEach.call(root.querySelectorAll('input,select'),function(e){ e.disabled=true; });
+    } else {
+      all=false; root.classList.add('ko'); fb.textContent='Qualcosa non torna. Rileggi il testo e riprova.';
+    }
+  });
+  var df=$('#doorfb');
+  if(all){ df.textContent=''; clearRoom(ri); }
+  else { S.errors++; df.textContent='La porta resta chiusa: −'+PEN_ERR+' s.'; penalize(PEN_ERR); }
+}
+function useHint(ri){
+  var hb=$('#hintbox');
+  if(!S.hint[ri]){ S.hint[ri]=true; S.hints++; penalize(PEN_HINT); }
+  hb.hidden=false; hb.innerHTML='<b>Indizio</b>'+esc(ROOMS[ri].hint);
+  $('#hintbtn').disabled=true;
+}
+function clearRoom(ri){
+  S.solved[ri]=true; renderSlots();
+  $('#open').disabled=true; $('#hintbtn').disabled=true;
+  var last=(ri===ROOMS.length-1);
+  $('#clearbox').innerHTML='<div class="clear"><div class="bigletter" aria-hidden="true">'+ROOMS[ri].letter+'</div>'+
+    '<div><p class="t">Stanza aperta. Lettera trovata: '+ROOMS[ri].letter+'</p><p class="nt">'+ROOMS[ri].note+'</p></div>'+
+    '<button class="btn" id="next" type="button">'+(last?'Vai alla porta finale':'Prossima stanza')+'</button></div>';
+  $('#next').onclick=function(){ if(last) viewFinal(); else viewRoom(ri+1); };
+  $('#next').focus();
+}
+
+/* ---------- porta finale e risultato ---------- */
+function viewFinal(){
+  S.phase='final'; renderSlots();
+  $('#poem').dataset.room='0';
+  $('#room').innerHTML='<p class="eyebrow">Porta finale</p><h2 id="rt" tabindex="-1">La porta dell’alba</h2>'+
+    '<p class="lead">Le sei serrature hanno dato sei lettere. Scrivi la parola che formano, nell’ordine delle stanze.</p>'+
+    '<form class="keybox" id="keyform" autocomplete="off"><label for="keyin" class="eyebrow">Parola-chiave</label>'+
+    '<input type="text" id="keyin" maxlength="12" autocomplete="off" autocapitalize="characters" spellcheck="false">'+
+    '<div class="door fin"><button class="btn grana" type="submit">Apri la porta</button><p class="fb" id="keyfb" role="status"></p></div></form>';
+  $('#keyform').onsubmit=function(e){
+    e.preventDefault();
+    if(norm($('#keyin').value)===norm(KEY)){ viewWin(); }
+    else { S.errors++; $('#keyfb').textContent='La porta non si apre: −'+PEN_ERR+' s.'; penalize(PEN_ERR); }
+  };
+  if(window.innerWidth<900){ $('#room').scrollIntoView(); } else { window.scrollTo(0,0); }
+  $('#keyin').focus({preventScroll:true});
+}
+function viewWin(){
+  var used=(Date.now()-S.startAt)/1000+S.penalty;
+  S.ended=true; S.phase='win'; renderSlots();
+  $('#clk').textContent=S.noTimer?'--:--':fmt(DURATION-used);
+  var h='<div class="wrap"><section class="room win"><p class="eyebrow">Porta aperta</p><h2>'+KEY+'</h2>'+
+    '<p class="lead">Nello Stilnovo la donna è spesso detta «donna angelicata»: non una donna come le altre, ma un essere che viene dal cielo e rende migliore chi la guarda. È ciò che Guinizelli mostra con la stella diana che prende forma umana.</p>'+
+    '<div class="stats"><div><b>'+fmt(used)+'</b>tempo con penalità</div><div><b>'+S.hints+'</b>indizi</div><div><b>'+S.errors+'</b>tentativi sbagliati</div></div>'+
+    '<ul class="recap">';
+  ROOMS.forEach(function(R){ h+='<li><strong>'+R.nome+'</strong>'+R.note+'</li>'; });
+  h+='</ul><div class="door"><button class="btn ghost" id="again" type="button">Gioca di nuovo</button></div></section></div>';
+  $('#app').innerHTML=h;
+  $('#again').onclick=function(){ S=fresh(); $('#app').innerHTML=''; viewIntro(); window.scrollTo(0,0); };
+  window.scrollTo(0,0);
+}
+function showTimeout(){
+  var n=S.solved.filter(Boolean).length;
+  var o=document.createElement('div');
+  o.className='ov'; o.id='ov'; o.setAttribute('role','dialog'); o.setAttribute('aria-modal','true'); o.setAttribute('aria-labelledby','ovt');
+  o.innerHTML='<div><h2 id="ovt">Tempo scaduto</h2><p>Avete aperto '+n+' stanze su '+ROOMS.length+'. La porta dell’alba resta chiusa.</p>'+
+    '<p>Potete ricominciare da capo oppure continuare senza limite di tempo per finire l’analisi.</p>'+
+    '<div class="acts"><button class="btn" id="ovgo" type="button">Continua senza tempo</button><button class="btn ghost" id="ovre" type="button">Ricomincia</button></div></div>';
+  document.body.appendChild(o);
+  $('#ovgo').onclick=function(){ S.noTimer=true; o.remove(); tick(); };
+  $('#ovre').onclick=function(){ o.remove(); S=fresh(); $('#app').innerHTML=''; viewIntro(); window.scrollTo(0,0); };
+  $('#ovgo').focus();
+}
+
+/* ---------- soluzioni per il docente (aggiungere #docente all’indirizzo) ---------- */
+function solution(t){
+  if(t.type==='choice') return esc(t.opts[t.ok]);
+  if(t.type==='multi') return t.ok.map(function(i){ return esc(t.opts[i]); }).join('<br>');
+  if(t.type==='match') return t.items.map(function(it){ return strip(it.p)+' → <b>'+esc((it.opts||t.shared)[it.ok])+'</b>'; }).join('<br>');
+  if(t.type==='sort') return t.items.map(function(it){ return esc(it.w)+' → <b>'+esc(t.cats[it.ok])+'</b>'; }).join('<br>');
+  if(t.type==='text') return t.fields.map(function(f){ return esc(f.label)+': <b>'+esc(f.show)+'</b>'; }).join('<br>');
+  return '';
+}
+function teacher(){
+  var ex=$('#teach');
+  if(location.hash!=='#docente'){ if(ex) ex.remove(); return; }
+  if(ex) return;
+  var h='<div class="wrap"><p class="eyebrow">Soluzioni per il docente</p><h2>Escape Room Guinizelli</h2>'+
+    '<p class="nt">Parola-chiave finale: <b>'+KEY+'</b>. Durata '+fmt(DURATION)+'. Errore −'+PEN_ERR+' s, indizio −'+PEN_HINT+' s.</p>'+
+    '<p style="margin-top:14px"><a class="btn ghost" href="#" style="display:inline-block;text-decoration:none">Chiudi</a></p>';
+  ROOMS.forEach(function(R,ri){
+    h+='<h3>Stanza '+(ri+1)+' · '+R.nome+' · lettera '+R.letter+'</h3><div class="scroll"><table><tbody>';
+    R.tasks.forEach(function(t){ h+='<tr><td>'+strip(t.q)+'</td><td>'+solution(t)+'</td></tr>'; });
+    h+='</tbody></table></div><p class="nt">Indizio: '+esc(R.hint)+'</p>';
+  });
+  h+='</div>';
+  var d=document.createElement('div'); d.className='teach'; d.id='teach'; d.innerHTML=h;
+  document.body.appendChild(d);
+}
+
+window.addEventListener('hashchange',teacher);
+viewIntro();
+teacher();
+})();
+</script>
+
+</body></html>
